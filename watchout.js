@@ -2,7 +2,15 @@
 var enemiesData = [];
 var playerData = [{
   x: Math.floor(Math.random() * 900),
-  y: Math.floor(Math.random() * 800)
+  y: Math.floor(Math.random() * 800),
+  deltax: 0,
+  deltay: 0,
+  moveKeys: {
+    37: [-1,0],
+    38: [0,-1],
+    39: [1,0],
+    40: [0,1]
+  }
 }];
 var player, enemies, gameBoard, animateIntervalID, collisionCheckID;
 var startScoring = false;
@@ -15,29 +23,44 @@ var drag = d3.behavior.drag().on('drag',function(){
 
   if(event.y > 150 && event.y < 900 && event.x > 100 && event.y < 1000){
     player.attr('cx',d3.event.x).attr('cy',d3.event.y);
-    playerData.x = d3.event.x;
-    playerData.y = d3.event.y;
+    playerData[0].x = d3.event.x;
+    playerData[0].y = d3.event.y;
     startScoring = true;
   }
 });
 
+window.addEventListener("keydown", function(event){
+  if (event.defaultPrevented) {
+    return; // Should do nothing if the key event was already consumed.
+  }
+  if (event.keyCode > 36 && event.keyCode < 41) {
+    keyMove(event.keyCode);
+  }
+  console.log(event.keyCode)
+  event.preventDefault();
+}, true)
+
 document.getElementById('reset').addEventListener('click', function(event){
-  //game();
-  //try to fix bug for immediate explosion on game restart
   startScoring = false;
   score = 0;
-  playerData = [{
-    x: Math.floor(Math.random() * 900),
-    y: Math.floor(Math.random() * 800)
-  }];
-  player.attr('r',20).attr('fill','#00ff00').attr('fill-opacity',1).attr('cx',playerData[0].x).attr('cy',playerData[0].y);
+  playerData[0].x = Math.floor(Math.random() * 900);
+  playerData[0].y = Math.floor(Math.random() * 800);
+  playerData[0].dx = 0;
+  playerData[0].dy = 0;
 
+  player.attr('r',20).attr('fill','#00ff00').attr('fill-opacity',1).attr('cx',playerData[0].x).attr('cy',playerData[0].y);
+  console.log('here')
+  animateEnemies();
   animateIntervalID = setInterval(animateEnemies,4020);
   collisionCheckID = setInterval(collisionCheck,200);
-  animateEnemies();
+});
 
-
-})
+var keyMove = function(keyCode){
+  console.log('here')
+  var changeDelta = playerData[0].moveKeys[keyCode];
+  playerData[0].deltax = playerData[0].deltax + changeDelta[0];
+  playerData[0].deltay = playerData[0].deltay + changeDelta[1];
+}
 
 var positionGenerator = function(){
   var retX = Math.floor((Math.random() * 900) +100);
@@ -62,31 +85,29 @@ var updateEnemyData = function(){
 }
 
 var blowup = function(){
-  //make player undraggable
   //animate blowup
   player.transition().duration(2000).attr('r',500).attr('fill','#ff0000').attr('fill-opacity',0.3);
   //freeze screen
-
-
-  //updateEnemyData();
-
   clearInterval(collisionCheckID);
   clearInterval(animateIntervalID);
 }
 
-var collisionCheck = function(){
+var collisionAndPlayerMove = function(){
   var dist;
   for (var i = 0;i < enemiesData.length;i++){
     enemies.each(function(d,i){
       //d3.select(this).attr('cx')
-      dist = Math.pow((Math.pow(((this.x.animVal.value + 20) - playerData.x),2)+Math.pow(((this.y.animVal.value + 20) - playerData.y),2)),0.5);
-      if (dist < 40){
+      dist = Math.pow((Math.pow(((this.x.animVal.value + 20) - playerData[0].x),2)+Math.pow(((this.y.animVal.value + 20) - playerData[0].y),2)),0.5);
+      if (dist < 40 && startScoring){
         blowup();
       }
     });
-    //var dist = Math.pow((Math.pow((enemies.attr('cx') - playerData.x),2)+Math.pow((enemies.attr('cy') - playerData.y),2)),0.5);
-
   }
+  var curPlayerPos = [player.attr('cx'),player.attr('cy')];
+  var newPos = [Number(curPlayerPos[0])+Number(playerData[0].deltax), Number(curPlayerPos[1])+Number(playerData[0].deltay)]
+  player.attr('cx', newPos[0] ).attr('cy', newPos[1]);
+  playerData[0].x = newPos[0];
+  playerData[0].y = newPos[1];
 }
 
 function CalculateStarPoints(centerX, centerY, arms, outerRadius, innerRadius)
@@ -94,22 +115,17 @@ function CalculateStarPoints(centerX, centerY, arms, outerRadius, innerRadius)
    var results = "";
    var angle = Math.PI / arms;
 
-   for (var i = 0; i < 2 * arms; i++)
-   {
+   for (var i = 0; i < 2 * arms; i++) {
       // Use outer or inner radius depending on what iteration we are in.
       var r = (i & 1) == 0 ? outerRadius : innerRadius;
-
       var currX = centerX + Math.cos(i * angle) * r;
       var currY = centerY + Math.sin(i * angle) * r;
 
       // Our first time we simply append the coordinates, subsequet times
       // we append a ", " to distinguish each coordinate pair.
-      if (i == 0)
-      {
+      if (i == 0) {
          results = currX + "," + currY;
-      }
-      else
-      {
+      } else {
          results += ", " + currX + "," + currY;
       }
    }
@@ -133,15 +149,13 @@ var game = function(){
       .data(enemiesData).enter().append('svg')
       .attr('x',function(d){ return d.x })
       .attr('y',function(d){ return d.y })
-      //.attr('r',20).attr('fill','#000000').attr('fill-opacity',0.3);
 
   enemies.append('polygon').attr('visibility','visible').attr('points',CalculateStarPoints(30,30,12,20,7)).attr('fill','#000000')
-    .attr('class','star');
+      .attr('class','star');
 
   animateEnemies();
   animateIntervalID = setInterval(animateEnemies,4020);
-  collisionCheckID = setInterval(collisionCheck,200);
+  collisionCheckID = setInterval(collisionAndPlayerMove,200);
 }
-
 
 game();
