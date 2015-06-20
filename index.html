@@ -4,12 +4,14 @@
     <link rel='stylesheet' type='css' href='styles.css'>
   </head>
   <body>
+  <div class="fullScreen">
     <div class="scoreboard">
       <!-- Modify the scoreboard when important events occur in your game! -->
       <div class="high">High score: <span id='highScoreSpan'>0</span></div>
       <div class="current">Current score: <span id='currentScoreSpan'>0</span></div>
       <div class="collisions">Collisions: <span>0</span></div>
       <button class="reset" id="reset">Reset Game</button>
+      </div>
     </div>
     <svg id="gameBoard"></svg>
     <script src="d3.js" charset="utf-8"></script>
